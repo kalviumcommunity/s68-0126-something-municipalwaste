@@ -21,3 +21,6 @@ Here we are using the proper folder structure without the need for and src folde
 - Clear separation: public for static assets; app for runtime code; configs at root to avoid ambiguity.
 - Future API layer: app/api will keep backend logic near consumers for better discoverability and simpler contracts.
 - Standardized tooling: Root configs enforce consistent linting, type-checking, and builds as the app grows.
+
+Screenshot of worki<img width="1470" height="956" alt="Screenshot 2026-01-22 at 12 42 19 PM" src="https://github.com/user-attachments/assets/43cc9a0b-a1ad-4b50-b2a0-309ff1643253" />
+ng:

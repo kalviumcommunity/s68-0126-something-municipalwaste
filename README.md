@@ -74,5 +74,157 @@ npx lint-staged
 - **Team onboarding**: New developers automatically follow project standards without memorizing rules
 
 This automated workflow ensures that code quality is maintained consistently across the entire team without requiring manual intervention.
-Screenshot of worki<img width="1470" height="956" alt="Screenshot 2026-01-22 at 12 42 19 PM" src="https://github.com/user-attachments/assets/43cc9a0b-a1ad-4b50-b2a0-309ff1643253" />
-ng:
+
+## Environment Variable Management Learning Unit
+
+### Secure Environment Variable Configuration
+
+We maintain a secure and collaborative environment variable setup using the following structure:
+
+**Files & Configuration**:
+- `.env.example` - Committed to git; contains template variables with example/dummy values for reference (NO secrets)
+- `.env.local` - Git-ignored; contains actual secrets and sensitive data (each developer has their own)
+- `.gitignore` protection - Configured to ignore `.env` but explicitly track `.env.example`
+
+**Configuration Details** (`.gitignore`):
+```ignore
+# env files (can opt-in for committing if needed)
+.env
+!.env.example
+```
+
+This pattern ensures:
+- Actual secrets in `.env` and `.env.local` are never accidentally committed
+- `.env.example` serves as onboarding documentation for new developers
+- Team members can quickly set up their local environment by copying `.env.example` to `.env.local`
+
+### Safe process.env Usage
+
+All environment variables in Next.js are accessed safely through `process.env`:
+
+**Benefits**:
+- Variables are resolved at build time for security
+- Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser
+- Sensitive keys remain server-side only
+- Type-safe with proper TypeScript configuration
+
+**Example**:
+```typescript
+// Safe - server-side only
+const apiSecret = process.env.API_SECRET;
+
+// Safe - explicitly exposed to browser when needed
+const publicApiUrl = process.env.NEXT_PUBLIC_API_URL;
+```
+
+This approach protects sensitive credentials while allowing necessary public configuration to reach the frontend.
+
+## Team Branching & PR Workflow Setup Learning Unit
+
+### Branching Strategy & Naming Conventions
+
+We use a **feature branch strategy where each team member has a dedicated branch**:
+
+**Branch Structure**:
+- `main` - Production-ready code (default branch)
+- `DevMayur` - Mayur's development branch
+- `DevJathin` - Jathin's development branch
+- `DevAnil` - Anil's development branch
+
+**Benefits of This Strategy**:
+- **Isolation**: Each developer works independently without interfering with others' code
+- **Clear ownership**: Branch names clearly indicate who's responsible for changes
+- **Easy merging**: PRs are created from individual branches to `main`, keeping the merge history clean
+- **Parallel development**: Multiple features can be developed simultaneously
+- **Simple conflict resolution**: Most conflicts are resolved during PR review rather than during branch merges
+
+### Pull Request Process
+
+Every feature or fix goes through a structured PR workflow:
+
+**PR Template** (`.github/pull_request_template.md`):
+
+The template guides authors through a comprehensive submission process:
+
+1. **Summary** - Clear explanation of the PR's purpose and what problem it solves
+2. **Type of Change** - Categorizes the PR (bug fix, new feature, breaking change, documentation, refactoring)
+3. **Changes Made** - Detailed list of modifications and reasoning
+4. **Screenshots / Evidence** - Visual proof and build/lint output showing all checks pass
+5. **Pre-Submission Checklist** - Author verifies:
+   - Build passes (`npm run build`)
+   - Linting passes (`npm run lint`)
+   - Type checking succeeds (`npm run type-check`)
+   - No debug code or secrets left behind
+   - Code follows project conventions
+
+6. **Review Checklist** - Reviewers verify:
+   - At least one teammate approval
+   - All review comments resolved
+   - PR linked to corresponding issue
+   - Clear commit messages
+   - No merge conflicts
+
+7. **Additional Context** - Extra information like related issues, dependencies, or security considerations
+
+This detailed template ensures every PR meets team standards before merging.
+
+### Code Review Checklist
+
+When reviewing PRs, team members verify:
+
+1. **Code Quality**
+   - Code follows naming conventions and project standards
+   - No console.log or debug code left behind
+   - Functions are properly typed with TypeScript
+   - No hardcoded secrets or sensitive data
+
+2. **Testing & Builds**
+   - Code builds without errors
+   - ESLint and Prettier checks pass
+   - All type checks pass (`tsc --noEmit`)
+
+3. **Documentation**
+   - Changes are documented if they affect usage
+   - Comments explain complex logic
+   - Commit messages are clear and descriptive
+
+4. **Collaboration**
+   - At least one other team member has reviewed and approved
+   - All review comments are resolved
+   - The PR is linked to the corresponding issue
+
+### How This Workflow Maintains Code Quality, Collaboration & Velocity
+
+**Code Quality**:
+- Pre-commit hooks prevent bad code from being committed
+- PR reviews catch issues before merge
+- Automated linting and type checks ensure consistency
+- Team standards are enforced at every step
+
+**Collaboration**:
+- Dedicated branches prevent developers from stepping on each other's toes
+- PR discussions provide context for decisions
+- Code reviews distribute knowledge across the team
+- Clear naming conventions make navigation easy
+
+**Velocity**:
+- Developers can work independently without waiting for others
+- Parallel development on separate branches speeds up feature delivery
+- Automated checks eliminate manual verification tasks
+- Clear workflow reduces back-and-forth communication
+
+### Real PR Example
+
+When a developer completes work on their feature branch (e.g., `DevMayur`), they:
+
+1. Push their changes to their branch
+2. Create a PR from their branch to `main`
+3. GitHub automatically runs lint and type checks
+4. Teammates review the PR using the checklist
+5. After approval and all checks pass, the PR is merged to `main`
+
+Example PR workflow showing:
+- ✅ All checks passing (ESLint, TypeScript, Build)
+- ✅ At least one approval from a teammate
+- ✅ Clear commit history from the feature branch
+- ✅ Resolved review comments before merge

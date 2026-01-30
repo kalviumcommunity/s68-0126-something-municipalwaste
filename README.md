@@ -75,6 +75,181 @@ npx lint-staged
 
 This automated workflow ensures that code quality is maintained consistently across the entire team without requiring manual intervention.
 
+## Authentication & Security Learning Unit
+
+### Overview of Authentication Flow
+
+The application implements a modern authentication system with two main endpoints:
+- **Signup** (`POST /api/auth/signup`) - User registration with password hashing
+- **Login** (`POST /api/auth/login`) - User authentication with JWT token generation
+
+This architecture ensures secure credential management and stateless authentication using industry-standard practices.
+
+### Signup Flow
+
+The signup process registers new users with comprehensive validation:
+
+1. **Request Validation**: All required fields (fullName, email, mobileNumber, password, role, assignedWardOrZone) are validated
+2. **Format Validation**:
+   - Email format validation using regex
+   - Mobile number must be exactly 10 digits
+   - Password minimum 6 characters
+   - Role must be one of: Admin, Worker, Supervisor
+3. **Duplicate Check**: System checks if user exists by email or mobile number
+4. **Password Hashing**: Password is hashed using bcryptjs with salt (10 rounds)
+5. **User Creation**: User is stored with hashed password (never plaintext)
+6. **Response**: Returns user data (excluding password) with HTTP 201 (Created) status
+
+**Bcrypt Password Hashing**:
+The system uses bcryptjs with 10 salt rounds to hash passwords. This ensures that passwords are never stored in plaintext. Even if the database is compromised, attackers cannot recover original passwords due to the computational complexity of bcrypt.
+
+**Success Response (201)**:
+```json
+{
+  "message": "User registered successfully",
+  "user": {
+    "id": "user_1704067200000_abc123def",
+    "fullName": "John Doe",
+    "email": "john@example.com",
+    "mobileNumber": "9876543210",
+    "role": "Worker",
+    "assignedWardOrZone": "Ward A",
+    "createdAt": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
+**Failure Response Example - Duplicate Email (409)**:
+```json
+{
+  "error": "User already exists",
+  "message": "A user with this email already exists"
+}
+```
+
+**Failure Response Example - Invalid Email (400)**:
+```json
+{
+  "error": "Validation failed",
+  "message": "Invalid email format"
+}
+```
+
+### Login Flow
+
+The login process authenticates users and returns JWT tokens:
+
+1. **Credential Collection**: Accept either email OR mobile number with password
+2. **User Lookup**: Find user by email or mobile number
+3. **Password Verification**: Compare provided password with stored hashed password using bcrypt
+4. **Token Generation**: Create JWT token with user claims (userId, email, role, assignedWardOrZone)
+5. **Token Expiry**: Token expires in 24 hours
+6. **Response**: Return JWT token and user information
+
+**JWT Token Generation & Verification**:
+During login, the system verifies the provided password against the stored hashed password using bcrypt comparison. Upon successful verification, a JWT token is generated with user claims (userId, email, role, assignedWardOrZone) and cryptographically signed. The token expires in 24 hours and is returned to the client for subsequent authenticated requests.
+
+**Success Response (200)**:
+```json
+{
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ1c2VyXzE3MDQwNjcyMDBfYWJjMTIzIiwiZW1haWwiOiJqb2huQGV4YW1wbGUuY29tIiwicm9sZSI6IldvcmtlciIsImlhdCI6MTcwNDA2NzIwMCwiZXhwIjoxNzA0MTUzNjAwfQ.signature",
+  "user": {
+    "id": "user_1704067200000_abc123",
+    "fullName": "John Doe",
+    "email": "john@example.com",
+    "mobileNumber": "9876543210",
+    "role": "Worker",
+    "assignedWardOrZone": "Ward A"
+  }
+}
+```
+
+**Failure Response - Invalid Credentials (401)**:
+```json
+{
+  "error": "Invalid credentials",
+  "message": "Email/mobile number or password is incorrect"
+}
+```
+
+**Failure Response - Missing Fields (400)**:
+```json
+{
+  "error": "Validation failed",
+  "message": "Email or mobile number and password are required"
+}
+```
+
+### Token Management & Security Reflection
+
+#### Token Expiry and Refresh Logic
+- **Current Implementation**: Tokens expire in 24 hours (`expiresIn: "24h"`)
+- **Security Benefit**: Short-lived tokens reduce the window of exposure if a token is compromised
+- **Refresh Strategy**: For production, implement a refresh token mechanism:
+  - Access token: Short-lived (15 minutes) for API requests
+  - Refresh token: Long-lived (7 days), stored securely, used to obtain new access tokens
+  - Refresh endpoint: `POST /api/auth/refresh` to exchange refresh token for new access token
+- **Implementation Consideration**: Refresh tokens should be HttpOnly cookies or securely stored, never exposed to JavaScript
+
+#### Token Storage Options: Cookie vs localStorage
+
+**localStorage Storage** (Current Frontend Pattern):
+- **Pros**: Easy to implement, accessible across tabs, straightforward in SPA applications
+- **Cons**: Vulnerable to XSS (Cross-Site Scripting) attacks; malicious script can steal token; exposed to localStorage inspection
+
+**HttpOnly Cookie Storage** (More Secure):
+- **Pros**: HttpOnly flag prevents JavaScript access, immune to XSS attacks, automatic cookie transmission, SameSite prevents CSRF
+- **Cons**: Slightly more complex to implement, requires backend cookie handling
+- **Recommendation**: Use HttpOnly cookies for authentication tokens in production environments
+
+#### How Authentication Strengthens App Security
+
+1. **Password Hashing with Bcryptjs**:
+   - Bcrypt uses salt + hash iterations (10 rounds) to make password cracking computationally infeasible
+   - Even with database breach, original passwords cannot be recovered
+   - Protects against rainbow table attacks and brute force attempts
+
+2. **JWT-Based Stateless Authentication**:
+   - No server-side session storage required; reduces session hijacking risks
+   - Token includes user claims (role, assignedWardOrZone) enabling role-based access control (RBAC)
+   - Cryptographic signature ensures token hasn't been tampered with
+   - Token expiry forces re-authentication, limiting breach window
+
+3. **Input Validation & Sanitization**:
+   - Email format validation prevents injection attacks
+   - Mobile number validation ensures data integrity
+   - Password length requirement (minimum 6 chars) prevents weak credentials
+   - Role validation restricts invalid user roles
+
+4. **Duplicate User Prevention**:
+   - Email and mobile number uniqueness checks prevent account takeover
+   - Ensures data consistency and prevents privilege escalation
+
+5. **Secure Error Messages**:
+   - Generic "Invalid credentials" message prevents user enumeration attacks
+   - Attackers cannot determine if email exists or just password is wrong
+   - Protects user privacy and prevents account discovery
+
+6. **HTTPS Requirement** (Production):
+   - JWT and passwords must be transmitted over HTTPS
+   - Prevents man-in-the-middle attacks during token transmission
+   - Essential for production deployments
+
+7. **Role-Based Access Control (RBAC)**:
+   - User role (Admin, Worker, Supervisor) embedded in JWT token
+   - Backend routes can verify role before authorizing sensitive operations
+   - Prevents privilege escalation and unauthorized data access
+
+**Best Practices for Production**:
+- Store `JWT_SECRET` in environment variables (never hardcode)
+- Use HTTPS only for token transmission
+- Implement token refresh mechanism for extended sessions
+- Add rate limiting on login/signup endpoints to prevent brute force
+- Log authentication events for security audit trails
+- Implement password strength requirements (uppercase, numbers, special chars)
+- Consider two-factor authentication (2FA) for admin roles
+
 ## Environment Variable Management Learning Unit
 
 ### Secure Environment Variable Configuration

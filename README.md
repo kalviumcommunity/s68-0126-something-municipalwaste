@@ -223,8 +223,57 @@ When a developer completes work on their feature branch (e.g., `DevMayur`), they
 4. Teammates review the PR using the checklist
 5. After approval and all checks pass, the PR is merged to `main`
 
-Example PR workflow showing:
-- ✅ All checks passing (ESLint, TypeScript, Build)
-- ✅ At least one approval from a teammate
-- ✅ Clear commit history from the feature branch
-- ✅ Resolved review comments before merge
+
+## Docker & Compose Setup for Local Development
+
+### Dockerfile Explanation
+
+Our `Dockerfile` is designed for a Next.js app:
+
+- **Base image**: Uses `node:20-alpine` for a lightweight, production-ready Node.js environment.
+- **WORKDIR**: Sets `/app` as the working directory inside the container.
+- **Dependency install**: Copies `package.json` and `package-lock.json` (if present) and runs `npm install` for reproducible installs.
+- **App copy & build**: Copies the rest of the project and runs `npm run build` to generate the Next.js production build.
+- **Expose port**: Opens port 3000 (the default for Next.js).
+- **Start command**: Runs `npm run start` to launch the app in production mode.
+
+### docker-compose.yml Explanation
+
+Our `docker-compose.yml` defines three services and their relationships:
+
+- **app**: The Next.js application, built from the Dockerfile. Depends on `db` and `redis` services. Exposes port 3000. Environment variables connect it to the database and cache.
+- **db**: A PostgreSQL 15 database. Uses a named volume (`db_data`) for persistent storage. Exposes port 5432. Credentials and DB name are set via environment variables.
+- **redis**: A Redis 7 cache. Exposes port 6379 for fast in-memory data storage.
+
+#### Networks
+- All services are connected to a custom bridge network `localnet` for secure, isolated communication.
+
+#### Environment Variables
+- The app uses `DATABASE_URL` and `REDIS_URL` to connect to the database and cache. The `db` service uses standard Postgres environment variables for setup.
+
+#### Volumes
+- `db_data` is a named volume that persists Postgres data across container restarts, preventing data loss.
+
+### Example: Build & Run Logs
+
+```
+docker compose up --build
+...
+nextjs_app  | Ready on http://localhost:3000
+postgres_db | database system is ready to accept connections
+redis_cache | Ready to accept connections
+```
+
+You can verify running containers with:
+```
+docker ps
+```
+
+### Troubleshooting & Reflections
+
+- **Port conflicts**: If ports 3000, 5432, or 6379 are in use, stop the conflicting processes or change the ports in `docker-compose.yml`.
+- **Permission errors**: On some systems, volume permissions may cause Postgres to fail. Fix by adjusting local folder permissions or running Docker with elevated privileges.
+- **Slow builds**: Ensure `node_modules` is not copied into the image by using a `.dockerignore` file. This keeps builds fast and images small.
+- **Service startup order**: The `depends_on` field ensures the app waits for db and redis to start, but you may still need to handle retry logic in your app for production.
+
+This setup enables fast, reproducible local development with isolated dependencies and persistent data.

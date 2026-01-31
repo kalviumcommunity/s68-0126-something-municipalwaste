@@ -24,6 +24,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate email format if provided
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json(
+          {
+            error: "Validation failed",
+            message: "Invalid email format",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Find user by email or mobile number
     let user;
     if (email) {

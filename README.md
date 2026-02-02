@@ -452,3 +452,60 @@ docker ps
 - **Service startup order**: The `depends_on` field ensures the app waits for db and redis to start, but you may still need to handle retry logic in your app for production.
 
 This setup enables fast, reproducible local development with isolated dependencies and persistent data.
+
+## Reflection: Consistent REST API Naming for Municipal Waste Management Systems
+
+### Why Naming Matters
+
+In a municipal waste management reporting system, consistent REST API naming is foundational to long-term maintainability. When multiple teams—field workers, supervisors, administrators, and third-party integrators—interact with the same API, predictable naming conventions reduce cognitive load and prevent errors.
+
+### Key Principles Applied
+
+**1. Resource-Based Naming**
+Using nouns that represent domain entities makes APIs intuitive:
+- `/api/reports/waste-segregation` — clearly identifies the resource
+- `/api/communities/{id}/reports` — shows hierarchical relationships
+
+This is evident in the project structure where `app/api/reports/waste-segregation/route.ts` follows Next.js conventions while maintaining REST principles.
+
+**2. Plural Nouns for Collections**
+Using `/reports` instead of `/report` signals that the endpoint handles collections, making it clear that:
+- `GET /reports` returns multiple items (with pagination)
+- `POST /reports` creates a single new item within that collection
+
+**3. Hierarchical Consistency**
+In waste management, data flows through hierarchies (zones → wards → communities → reports). Consistent naming reflects this:
+```
+/api/zones/{zoneId}/wards
+/api/wards/{wardId}/communities
+/api/communities/{communityId}/reports
+```
+
+**4. Query Parameters for Filtering**
+Rather than creating multiple endpoints (`/pending-reports`, `/verified-reports`), using query parameters maintains a single source of truth:
+```
+GET /api/reports/waste-segregation?status=pending&ward=Ward5&minScore=80
+```
+
+### Maintainability Benefits
+
+| Aspect | Impact |
+|--------|--------|
+| **Onboarding** | New developers understand endpoints without documentation |
+| **Debugging** | Predictable URLs make log analysis straightforward |
+| **Testing** | Consistent patterns enable reusable test utilities |
+| **Versioning** | Clear structure simplifies `/v2/` migrations |
+| **Integration** | Third-party systems (municipal dashboards, mobile apps) integrate faster |
+
+### Real-World Example
+
+In this waste management system, when a field worker submits a segregation report, the flow is clear:
+1. `POST /api/reports/waste-segregation` — creates the report
+2. `GET /api/reports/waste-segregation?status=pending` — supervisors review pending reports
+3. `PATCH /api/reports/waste-segregation/{id}` — updates status to "verified"
+
+Each endpoint's purpose is self-documenting, reducing the need for extensive API documentation and minimizing integration errors across the municipal system.
+
+### Conclusion
+
+Consistent REST API naming isn't just about aesthetics—it's a form of documentation that lives in the code itself. For municipal systems that may span years of maintenance and multiple development teams, this consistency pays dividends in reduced bugs, faster feature development, and smoother handoffs.

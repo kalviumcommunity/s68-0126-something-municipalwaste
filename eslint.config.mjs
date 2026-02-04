@@ -10,8 +10,8 @@ const eslintConfig = defineConfig([
   {
     rules: {
       "no-console": "warn",
-      "semi": ["error", "always"],
-      "quotes": ["error", "double"],
+      semi: ["error", "always"],
+      quotes: ["error", "double"],
     },
   },
   // Override default ignores of eslint-config-next.

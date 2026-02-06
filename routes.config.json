@@ -1,0 +1,35 @@
+{
+  "roles": ["admin", "collector", "user"],
+  "defaultRole": "user",
+  "publicRoutes": ["/", "/login", "/signup"],
+  "protectedRoutes": [
+    {
+      "path": "/dashboard",
+      "allowedRoles": ["admin", "collector", "user"]
+    },
+    {
+      "path": "/users",
+      "allowedRoles": ["admin"]
+    },
+    {
+      "path": "/collections",
+      "allowedRoles": ["admin", "collector"]
+    },
+    {
+      "path": "/reports",
+      "allowedRoles": ["admin", "collector"]
+    },
+    {
+      "path": "/settings",
+      "allowedRoles": ["admin"]
+    },
+    {
+      "path": "/admin",
+      "allowedRoles": ["admin"]
+    }
+  ],
+  "roleRedirects": {
+    "unauthorized": "/dashboard",
+    "unauthenticated": "/login"
+  }
+}

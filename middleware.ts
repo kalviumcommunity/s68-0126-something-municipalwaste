@@ -1,0 +1,15 @@
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
+
+export default NextAuth(authConfig).auth;
+
+export const config = {
+  matcher: [
+    "/dashboard/:path*",
+    "/users/:path*",
+    "/collections/:path*",
+    "/reports/:path*",
+    "/settings/:path*",
+    "/admin/:path*",
+  ],
+};

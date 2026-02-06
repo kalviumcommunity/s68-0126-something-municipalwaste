@@ -1,4 +1,5 @@
-import type { NextAuthConfig } from "next-auth";
+import type { NextAuthConfig, Session, User } from "next-auth";
+import type { JWT } from "next-auth/jwt";
 import routesConfig from "./routes.config.json";
 
 // Emails that should be granted admin role (for OAuth users)
@@ -35,9 +36,7 @@ export const authConfig = {
       if (!isLoggedIn) return false;
 
       // Check role-based access
-      const userRole =
-        (auth as { user?: { role?: string } })?.user?.role ||
-        routesConfig.defaultRole;
+      const userRole = auth?.user?.role || routesConfig.defaultRole;
       if (!matchedRoute.allowedRoles.includes(userRole)) {
         // Redirect to unauthorized page instead of login
         return Response.redirect(
@@ -47,29 +46,15 @@ export const authConfig = {
 
       return true;
     },
-    async jwt({
-      token,
-      user,
-    }: {
-      token: Record<string, unknown>;
-      user?: Record<string, unknown>;
-    }) {
+    async jwt({ token, user }: { token: JWT; user?: User }) {
       if (user) {
         token.id = user.id;
         const isAdmin = ADMIN_EMAILS.includes(token.email as string);
-        token.role = isAdmin
-          ? "admin"
-          : (user.role as string) || routesConfig.defaultRole;
+        token.role = isAdmin ? "admin" : user.role || routesConfig.defaultRole;
       }
       return token;
     },
-    async session({
-      session,
-      token,
-    }: {
-      session: { user?: Record<string, unknown> };
-      token: Record<string, unknown>;
-    }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = (token.role as string) || routesConfig.defaultRole;

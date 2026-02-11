@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { Recycle, Menu, LogOut, LayoutDashboard, Shield } from "lucide-react";
+import {
+  Recycle,
+  Menu,
+  LogOut,
+  LayoutDashboard,
+  Shield,
+  User,
+  Users,
+  Settings,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +24,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/app/components/NotificationBell";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -76,6 +86,8 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
 
+          {session && <NotificationBell />}
+
           {isLoading ? (
             <div className="h-9 w-9 animate-pulse rounded-full bg-muted" />
           ) : session ? (
@@ -118,13 +130,28 @@ export function Navbar() {
                     Dashboard
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
                 {session.user?.role === "admin" && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin" className="cursor-pointer">
-                      <Shield className="mr-2 h-4 w-4" />
-                      Manage Users
-                    </Link>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/users" className="cursor-pointer">
+                        <Users className="mr-2 h-4 w-4" />
+                        Users
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings" className="cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

@@ -1,4 +1,5 @@
-import { auth, updateUserRole } from "@/auth";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import routesConfig from "@/routes.config.json";
 
@@ -40,7 +41,18 @@ export async function PATCH(
       );
     }
 
-    const updatedUser = updateUserRole(id, role);
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { role: role as "admin" | "collector" | "user" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        zone: true,
+      },
+    });
+
     return NextResponse.json({
       message: "Role updated successfully",
       user: updatedUser,

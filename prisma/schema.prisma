@@ -1,0 +1,260 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  collector
+  user
+}
+
+enum CollectionStatus {
+  pending
+  scheduled
+  in_progress
+  completed
+  cancelled
+  missed
+}
+
+enum WasteType {
+  general
+  recycling
+  organic
+  hazardous
+  electronic
+  bulk
+}
+
+enum CollectionPriority {
+  low
+  normal
+  high
+  urgent
+}
+
+enum NotificationType {
+  collection_reminder
+  collection_completed
+  schedule_change
+  issue_report
+  reward_earned
+  system_announcement
+}
+
+enum ReportType {
+  missed_collection
+  damaged_bin
+  illegal_dumping
+  other
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String?
+  email         String         @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          UserRole       @default(user)
+  phone         String?
+  address       String?
+  zone          String?
+  points        Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  collections   Collection[]
+  notifications Notification[]
+  reports       Report[]
+  rewards       RewardRedemption[]
+  collectorRoutes CollectorRoute[]
+
+  @@index([email])
+  @@index([role])
+  @@index([zone])
+}
+
+model Collection {
+  id              String             @id @default(cuid())
+  userId          String
+  wasteType       WasteType
+  status          CollectionStatus   @default(pending)
+  priority        CollectionPriority @default(normal)
+  scheduledDate   DateTime?
+  scheduledTime   String?           // Format: "08:00-12:00"
+  completedAt     DateTime?
+  address         String
+  zone            String
+  notes           String?
+  proofImageUrl   String?
+  collectorId     String?
+  collectorNotes  String?
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([zone])
+  @@index([scheduledDate])
+  @@index([collectorId])
+}
+
+model Schedule {
+  id            String    @id @default(cuid())
+  zone          String
+  wasteType     WasteType
+  dayOfWeek     Int       // 0-6 (Sunday-Saturday)
+  timeSlot      String    // "08:00-12:00"
+  collectorId   String?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([zone])
+  @@index([dayOfWeek])
+  @@index([isActive])
+}
+
+model CollectorRoute {
+  id            String    @id @default(cuid())
+  collectorId   String
+  zone          String
+  date          DateTime
+  startTime     DateTime?
+  endTime       DateTime?
+  status        String    @default("pending") // pending, active, completed
+  totalStops    Int       @default(0)
+  completedStops Int      @default(0)
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  collector     User      @relation(fields: [collectorId], references: [id], onDelete: Cascade)
+
+  @@index([collectorId])
+  @@index([zone])
+  @@index([date])
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+model Report {
+  id          String     @id @default(cuid())
+  userId      String
+  type        ReportType
+  title       String
+  description String
+  location    String
+  imageUrl    String?
+  status      String     @default("pending") // pending, investigating, resolved
+  priority    CollectionPriority @default(normal)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  resolutionNotes String?
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Reward {
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  pointsCost  Int
+  category    String    // discount, voucher, service
+  isActive    Boolean   @default(true)
+  imageUrl    String?
+  terms       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  redemptions RewardRedemption[]
+
+  @@index([isActive])
+  @@index([pointsCost])
+}
+
+model RewardRedemption {
+  id        String   @id @default(cuid())
+  userId    String
+  rewardId  String
+  points    Int
+  status    String   @default("pending") // pending, approved, delivered, cancelled
+  code      String?  @unique
+  redeemedAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward    Reward   @relation(fields: [rewardId], references: [id])
+
+  @@index([userId])
+  @@index([rewardId])
+  @@index([status])
+}
+
+model SystemSettings {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  category  String   // general, notifications, scheduling, rewards
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+}
+
+model Analytics {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now())
+  zone            String?
+  totalCollections Int     @default(0)
+  completedCollections Int @default(0)
+  recyclingWeight Float   @default(0) // in kg
+  generalWasteWeight Float @default(0) // in kg
+  rewardsIssued   Int      @default(0)
+  co2Saved        Float    @default(0) // in kg
+  
+  @@index([date])
+  @@index([zone])
+}

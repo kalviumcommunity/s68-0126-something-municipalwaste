@@ -2,19 +2,10 @@ import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import GitHub from "next-auth/providers/github";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/db";
 
 import routesConfig from "./routes.config.json";
-
-// This would normally connect to a database
-// For now, we'll use a mock user store
-export const users: Array<{
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-}> = [];
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -34,10 +25,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Please provide both email and password");
         }
 
-        // Find user
-        const user = users.find((u) => u.email === email);
+        // Find user in database
+        const user = await prisma.user.findUnique({
+          where: { email },
+        });
 
-        if (!user) {
+        if (!user || !user.password) {
           throw new Error("Invalid credentials");
         }
 
@@ -57,7 +50,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  debug: true, // Enable debug mode to see more error details
   session: {
     strategy: "jwt" as const,
   },
@@ -70,7 +62,9 @@ export async function registerUser(
   password: string
 ) {
   // Check if user already exists
-  const existingUser = users.find((u) => u.email === email);
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
   if (existingUser) {
     throw new Error("User already exists");
   }
@@ -78,16 +72,15 @@ export async function registerUser(
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Create new user
-  const newUser = {
-    id: crypto.randomUUID(),
-    name,
-    email,
-    password: hashedPassword,
-    role: routesConfig.defaultRole,
-  };
-
-  users.push(newUser);
+  // Create new user in database
+  const newUser = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      role: routesConfig.defaultRole as "admin" | "collector" | "user",
+    },
+  });
 
   return {
     id: newUser.id,
@@ -95,62 +88,3 @@ export async function registerUser(
     email: newUser.email,
   };
 }
-
-// Get all users (without passwords)
-export function getUsers() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  return users.map(({ password, ...user }) => user);
-}
-
-// Find a user by ID (without password)
-export function getUserById(id: string) {
-  const user = users.find((u) => u.id === id);
-  if (!user) return null;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password, ...safeUser } = user;
-  return safeUser;
-}
-
-// Update a user's role (returns the updated user without password)
-export function updateUserRole(userId: string, newRole: string) {
-  if (!routesConfig.roles.includes(newRole)) {
-    throw new Error(
-      `Invalid role. Must be one of: ${routesConfig.roles.join(", ")}`
-    );
-  }
-
-  const user = users.find((u) => u.id === userId);
-  if (!user) {
-    throw new Error("User not found");
-  }
-
-  user.role = newRole;
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { password, ...safeUser } = user;
-  return safeUser;
-}
-
-// Seed a default admin account (runs once on startup)
-async function seedAdmin() {
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@ecowaste.com";
-  const adminPassword = process.env.ADMIN_PASSWORD || "admin1234";
-
-  const exists = users.find((u) => u.email === adminEmail);
-  if (exists) return;
-
-  const hashedPassword = await bcrypt.hash(adminPassword, 10);
-  users.push({
-    id: crypto.randomUUID(),
-    name: "Admin",
-    email: adminEmail,
-    password: hashedPassword,
-    role: "admin",
-  });
-
-  // eslint-disable-next-line no-console
-  console.log(`[Auth] Seeded admin account: ${adminEmail}`);
-}
-
-// eslint-disable-next-line no-console
-seedAdmin().catch(console.error);
